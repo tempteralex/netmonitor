@@ -1,0 +1,26 @@
+# Конфигурация netmonitor
+# VPN определяется только по наличию VPN-адаптера (TAP/TUN/Wintun) —
+# провайдерский IP динамический, поэтому IP-сравнение не используется.
+
+interval_sec: 6
+connect_timeout_sec: 5
+read_timeout_sec: 5
+confirm_count: 2
+
+hosts:
+  allowed:
+    - https://www.gosuslugi.ru
+    - https://vk.ru
+  blocked:
+    - https://www.youtube.com
+    - https://twitter.com
+
+vpn:
+  interface_patterns: ["TAP", "TUN", "Wintun", "wg", "OpenVPN", "vpn"]
+  exclude_interface_patterns: ["Hyper-V", "VirtualBox", "Loopback"]
+
+notifications:
+  sound: true
+  toast: true
+  log_file: "monitor.log"
+  notify_delay_sec: 3             # 3000мс пауза после уведомления

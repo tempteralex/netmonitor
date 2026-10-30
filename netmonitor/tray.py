@@ -72,29 +72,57 @@ class TrayIcon:
     реальный pystray.Icon; в тестах подменяется через конструктор.
     """
 
-    def __init__(self, icon_factory: Callable[[State], object] | None = None):
+    def __init__(self, icon_factory: Callable[[State], object] | None = None,
+                 on_restart: Callable[[], None] | None = None):
         self._icon_factory = icon_factory or self._default_icon_factory
+        self._on_restart = on_restart
         self._icon = None
         self._current_state: State | None = None
         self._thread: threading.Thread | None = None
+        self._menu_items: list[tuple[str, Callable]] = []   # для get_menu_callback
+
+    def _build_menu_items(self) -> list[tuple[str, Callable]]:
+        """Список (label, callback) пунктов меню трея.
+
+        Заполняется всегда (включая custom icon_factory), чтобы get_menu_callback
+        работал независимо от того, кто создал Icon.
+        """
+        items: list[tuple[str, Callable]] = []
+        if self._on_restart is not None:
+            def on_restart(icon, item):
+                self._on_restart()
+            items.append(("Перезагрузка", on_restart))
+
+        def on_quit(icon, item):
+            if self._icon is not None:
+                self._icon.stop()
+        items.append(("Выход", on_quit))
+        self._menu_items = items
+        return items
 
     def _default_icon_factory(self, initial: State):
         from pystray import Icon, Menu, MenuItem
 
-        def on_quit(icon, item):
-            icon.stop()
-
         img = make_icon(initial)
+        items = self._build_menu_items()
         return Icon(
             "netmonitor",
             icon=img,
             title=initial.label(),
-            menu=Menu(MenuItem("Выход", on_quit)),
+            menu=Menu(*[MenuItem(lbl, cb) for lbl, cb in items]),
         )
+
+    def get_menu_callback(self, label: str):
+        """Вернуть колбэк пункта меню по его названию (для тестов/отладки)."""
+        for lbl, cb in self._menu_items:
+            if lbl == label:
+                return cb
+        return None
 
     def update(self, state: State) -> None:
         """Сменить иконку и tooltip. При первом вызове создаёт pystray.Icon."""
         if self._icon is None:
+            self._build_menu_items()   # заполнить пункты меню (для get_menu_callback)
             self._icon = self._icon_factory(state)
             self._current_state = state
             # инициализируем поля иконки (для заглушек и реального pystray)

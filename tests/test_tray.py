@@ -55,12 +55,13 @@ def test_make_icon_uses_state_color():
 # === Seam 2: TrayIcon ======================================================
 
 class _FakePystrayIcon:
-    """Заглушка pystray.Icon: запоминает установленную иконку/tooltip, не запускает GUI."""
+    """Заглушка pystray.Icon: запоминает установленную иконку/tooltip/меню, не запускает GUI."""
     def __init__(self):
         self.icon = None
         self.title = None
         self.visible = False
         self.stopped = False
+        self.menu = None   # объект Menu из pystray (для тестов — список (label, callback))
 
     def run(self):
         self.visible = True
@@ -116,3 +117,31 @@ def test_trayicon_stop_stops_icon(tmp_path):
     tray.start()
     tray.stop()
     assert fake.stopped is True
+
+
+# --- меню «Перезагрузка» ----------------------------------------------------
+
+def test_trayicon_has_restart_menu_item(tmp_path):
+    """В меню трея есть пункт «Перезагрузка», вызывающий on_restart callback."""
+    fake = _FakePystrayIcon()
+    restart_calls = {"n": 0}
+    tray = TrayIcon(
+        icon_factory=lambda s: fake,
+        on_restart=lambda: restart_calls.__setitem__("n", restart_calls["n"] + 1),
+    )
+    tray.update(State.NO_INTERNET)
+
+    # находим пункт «Перезагрузка» в меню и вызываем его колбэк
+    restart_cb = tray.get_menu_callback("Перезагрузка")
+    assert restart_cb is not None
+    restart_cb(None, None)   # pystray передаёт (icon, item)
+    assert restart_calls["n"] == 1
+
+
+def test_trayicon_restart_not_added_without_callback(tmp_path):
+    """Без on_restart пункт «Перезагрузка» не добавляется (только «Выход»)."""
+    fake = _FakePystrayIcon()
+    tray = TrayIcon(icon_factory=lambda s: fake)
+    tray.update(State.NO_INTERNET)
+    assert tray.get_menu_callback("Перезагрузка") is None
+    assert tray.get_menu_callback("Выход") is not None

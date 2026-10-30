@@ -174,3 +174,55 @@ def test_no_tray_flag_parsed(tmp_path, monkeypatch, capsys):
     code = cli.monitor_main(["--no-tray", "--config", str(cfg_path)])
     assert code == 0
     assert created["n"] == 0   # TrayIcon не создавался
+
+
+# --- автозагрузка при первом старте мониторинга ---------------------------
+
+def test_monitor_install_autostart_on_first_run(tmp_path, monkeypatch, capsys):
+    """При запуске мониторинга (без --no-autostart) лаунчер добавляется в автозагрузку,
+    если его там ещё нет."""
+    cfg_path = _make_cfg(tmp_path)
+    monkeypatch.setattr("netmonitor.cli.default_startup_dir", lambda: str(tmp_path))
+    monkeypatch.setattr("netmonitor.cli._monitor_script_path", lambda: str(tmp_path / "monitor.py"))
+    monkeypatch.setattr("netmonitor.monitor.is_host_available", lambda url, c, r: True)
+    monkeypatch.setattr("netmonitor.monitor.is_vpn_active", lambda vcfg: False)
+    monkeypatch.setattr("netmonitor.monitor.time.sleep", lambda s: (_ for _ in ()).throw(KeyboardInterrupt()))
+    monkeypatch.setattr("netmonitor.tray.TrayIcon", lambda *a, **k: type("S", (), {"start_detached": lambda s: None, "stop": lambda s: None, "update": lambda s, st: None})())
+
+    cli.monitor_main(["--config", str(cfg_path)])
+
+    launchers = [p for p in tmp_path.iterdir() if p.suffix == ".vbs"]
+    assert len(launchers) == 1   # автозагрузка добавлена
+
+
+def test_monitor_no_autostart_flag_skips_install(tmp_path, monkeypatch, capsys):
+    """Флаг --no-autostart отключает автоматическое добавление в автозагрузку."""
+    cfg_path = _make_cfg(tmp_path)
+    monkeypatch.setattr("netmonitor.cli.default_startup_dir", lambda: str(tmp_path))
+    monkeypatch.setattr("netmonitor.cli._monitor_script_path", lambda: str(tmp_path / "monitor.py"))
+    monkeypatch.setattr("netmonitor.monitor.is_host_available", lambda url, c, r: True)
+    monkeypatch.setattr("netmonitor.monitor.is_vpn_active", lambda vcfg: False)
+    monkeypatch.setattr("netmonitor.monitor.time.sleep", lambda s: (_ for _ in ()).throw(KeyboardInterrupt()))
+    monkeypatch.setattr("netmonitor.tray.TrayIcon", lambda *a, **k: type("S", (), {"start_detached": lambda s: None, "stop": lambda s: None, "update": lambda s, st: None})())
+
+    cli.monitor_main(["--no-autostart", "--config", str(cfg_path)])
+
+    launchers = [p for p in tmp_path.iterdir() if p.suffix == ".vbs"]
+    assert len(launchers) == 0   # автозагрузка НЕ добавлена
+
+
+def test_monitor_autostart_idempotent_no_duplicate(tmp_path, monkeypatch, capsys):
+    """Повторный запуск не создаёт дубликат лаунчера — ровно один .vbs."""
+    cfg_path = _make_cfg(tmp_path)
+    monkeypatch.setattr("netmonitor.cli.default_startup_dir", lambda: str(tmp_path))
+    monkeypatch.setattr("netmonitor.cli._monitor_script_path", lambda: str(tmp_path / "monitor.py"))
+    monkeypatch.setattr("netmonitor.monitor.is_host_available", lambda url, c, r: True)
+    monkeypatch.setattr("netmonitor.monitor.is_vpn_active", lambda vcfg: False)
+    monkeypatch.setattr("netmonitor.monitor.time.sleep", lambda s: (_ for _ in ()).throw(KeyboardInterrupt()))
+    monkeypatch.setattr("netmonitor.tray.TrayIcon", lambda *a, **k: type("S", (), {"start_detached": lambda s: None, "stop": lambda s: None, "update": lambda s, st: None})())
+
+    cli.monitor_main(["--config", str(cfg_path)])
+    cli.monitor_main(["--config", str(cfg_path)])
+
+    launchers = [p for p in tmp_path.iterdir() if p.suffix == ".vbs"]
+    assert len(launchers) == 1

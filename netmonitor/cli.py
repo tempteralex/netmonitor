@@ -6,29 +6,54 @@ Seam: monitor_main(argv=None) -> int  — тестируемая функция.
   --check-once              разовая проверка → напечатать состояние, выйти
   --install-startup         установить автозапуск
   --uninstall-startup       удалить автозапуск
+  --no-tray                 без иконки в трее
+  --no-autostart            не добавлять в автозагрузку при первом старте
   --help / (без аргументов) usage
 Exit codes: 0 = успех, 2 = ошибка/usage.
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 from netmonitor import monitor as monitor_mod
 from netmonitor.config import load
-from netmonitor.startup import default_startup_dir, install_startup, uninstall_startup
+from netmonitor.startup import (
+    default_startup_dir,
+    install_startup,
+    install_startup_if_absent,
+    uninstall_startup,
+)
 from netmonitor.state_tracker import StateTracker
 from netmonitor.notifier import Notifier
+
+
+def restart() -> None:
+    """Перезапуск процесса monitor (вызывается из меню трея «Перезагрузка»).
+
+    Заменяет текущий процесс новым запуском того же скрипта (os.execv),
+    сохраняя argv[0] и sys.argv. Не оставляет orphan-процессов и
+    не открывает новое окно.
+    """
+    import sys
+    # перезапускаем как "python -m netmonitor.cli" с теми же аргументами
+    argv = sys.argv[1:]
+    python = sys.executable
+    # execv заменяет текущий процесс: -m netmonitor.cli <оригинальные аргументы>
+    os.execv(python, [python, "-m", "netmonitor.cli", *argv])
 
 
 USAGE = """\
 netmonitor — мониторинг наличия интернета.
 
 Использование:
-  python monitor.py --config <path>                  запустить мониторинг
+  python monitor.py --config <path>                  запустить мониторинг (с иконкой в трее)
+  python monitor.py --config <path> --no-tray        запустить без иконки в трее
+  python monitor.py --config <path> --no-autostart   не добавлять в автозагрузку при старте
   python monitor.py --check-once --config <path>     разовая проверка, печать состояния
-  python monitor.py --install-startup --config <path>  установить автозапуск
-  python monitor.py --uninstall-startup               удалить автозапуск
+  python monitor.py --install-startup --config <path>  добавить в автозагрузку
+  python monitor.py --uninstall-startup               удалить из автозагрузки
   python monitor.py --help                            эта справка
 """
 
@@ -52,6 +77,7 @@ def _parse(argv: list[str]) -> dict:
         "install_startup": False,
         "uninstall_startup": False,
         "no_tray": False,
+        "no_autostart": False,
         "help": False,
     }
     i = 0
@@ -72,6 +98,8 @@ def _parse(argv: list[str]) -> dict:
             opts["uninstall_startup"] = True
         elif a == "--no-tray":
             opts["no_tray"] = True
+        elif a == "--no-autostart":
+            opts["no_autostart"] = True
         else:
             raise ValueError(f"неизвестный аргумент: {a}")
         i += 1
@@ -133,9 +161,23 @@ def monitor_main(argv: list[str] | None = None) -> int:
     if not opts["no_tray"]:
         try:
             from netmonitor.tray import TrayIcon
-            tray = TrayIcon()
+            tray = TrayIcon(on_restart=restart)
         except Exception as e:
             print(f"Внимание: трей недоступен ({e}). Запуск без иконки.", file=sys.stderr)
+
+    # автозагрузка при первом старте (если не отключено и лаунчера ещё нет)
+    if not opts["no_autostart"]:
+        try:
+            launcher = install_startup_if_absent(
+                _monitor_script_path(),
+                opts["config"],
+                startup_dir=default_startup_dir(),
+            )
+            if launcher is not None:
+                print(f"Добавлено в автозагрузку: {launcher}")
+        except Exception as e:
+            print(f"Внимание: не удалось добавить в автозагрузку ({e}).", file=sys.stderr)
+
     try:
         monitor_mod.main(opts["config"], tray=tray)
     except KeyboardInterrupt:

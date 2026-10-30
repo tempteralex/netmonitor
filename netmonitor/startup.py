@@ -71,6 +71,25 @@ def install_startup(
     return launcher
 
 
+def install_startup_if_absent(
+    target_script: str,
+    config_path: str,
+    pythonw: str | None = None,
+    startup_dir: str | None = None,
+) -> Path | None:
+    """Добавить .vbs-лаунчер, только если его ещё нет. Возвращает путь к созданному
+    файлу, либо None, если лаунчер уже существует (idempotent).
+
+    Используется при первом старте мониторинга для авто-добавления в автозагрузку
+    без дублирования.
+    """
+    sdir = Path(startup_dir) if startup_dir else Path(default_startup_dir())
+    launcher = sdir / _launcher_name(target_script)
+    if launcher.exists():
+        return None
+    return install_startup(target_script, config_path, pythonw=pythonw, startup_dir=str(sdir))
+
+
 def uninstall_startup(target_script: str, startup_dir: str | None = None) -> bool:
     """Удалить лаунчер, если существует. True если был удалён, False если не было."""
     sdir = Path(startup_dir) if startup_dir else Path(default_startup_dir())

@@ -30,11 +30,37 @@
 
 ## Установка
 
+### 1. Зависимости
+
 ```bash
-pip install psutil requests pyyaml pystray Pillow
+pip install -r requirements.txt
 ```
 
-Требуется Python 3.10+ на Windows (используется `winsound`).
+Требуется Python 3.10+ на Windows (используется `winsound`, `winreg`, `pystray`).
+
+### 2. Конфигурация
+
+Файл [`config.yaml`](config.yaml) уже идёт с примером. Отредактируйте под себя:
+- `hosts.allowed` — хосты, доступные всегда (белый список при ограничениях)
+- `hosts.blocked` — хост, который **доступен только при полном интернете**
+  (должен блокироваться при ограничениях — например google.com)
+- `vpn.interface_patterns` — паттерны имён VPN-адаптеров (TAP/TUN/Wintun/...)
+- `interval_sec`, `confirm_count` — интервал опроса и число подтверждений
+
+### 3. Первый запуск
+
+```bash
+python -m netmonitor.cli --config config.yaml
+```
+
+При **первом старте** программа автоматически добавит себя в автозагрузку
+Windows (если её там ещё нет). После перезагрузки ПК мониторинг запустится
+сам. Подробное сообщение печатается в консоль при добавлении.
+
+Чтобы отключить авто-добавление в автозагрузку:
+```bash
+python -m netmonitor.cli --config config.yaml --no-autostart
+```
 
 ## Использование
 
@@ -48,12 +74,44 @@ python -m netmonitor.cli --config config.yaml
 # без иконки в трее
 python -m netmonitor.cli --config config.yaml --no-tray
 
-# установить автозапуск при старте Windows
-python -m netmonitor.cli --install-startup --config D:/path/to/config.yaml
-
-# удалить автозапуск
+# вручную добавить/удалить автозагрузку
+python -m netmonitor.cli --install-startup --config config.yaml
 python -m netmonitor.cli --uninstall-startup
 ```
+
+### Меню иконки в трее
+
+Правый клик по иконке:
+- **Перезагрузка** — перезапуск процесса мониторинга (полный рестарт)
+- **Выход** — завершить программу
+
+## Деинсталляция
+
+### Убрать из автозагрузки
+
+```bash
+python -m netmonitor.cli --uninstall-startup
+```
+
+Удаляет `.vbs`-лаунчер из папки Startup. После этого мониторинг не будет
+запускаться при старте Windows.
+
+### Полное удаление программы
+
+1. Уберите из автозагрузки (см. выше):
+   ```bash
+   python -m netmonitor.cli --uninstall-startup
+   ```
+2. Остановите мониторинг (клик «Выход» в трее, или Ctrl+C в консоли)
+3. Удалите папку с программой:
+   ```bash
+   rm -rf D:/work/job
+   ```
+4. (опционально) Удалите зависимости:
+   ```bash
+   pip uninstall psutil requests pyyaml pystray Pillow
+   ```
+5. (опционально) Удалите лог `monitor.log`, если создавался в папке программы
 
 ## Конфигурация
 

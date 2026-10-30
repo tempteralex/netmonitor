@@ -110,3 +110,27 @@ def test_uninstall_only_removes_its_own_launcher(tmp_path):
 
     remaining = [p.name for p in tmp_path.iterdir()]
     assert "other_launcher.vbs" in remaining
+
+
+# --- install_startup_if_absent: idempotent авто-добавление ------------------
+
+def test_install_if_absent_creates_when_missing(tmp_path):
+    target = str(tmp_path / "monitor.py")
+    cfg = str(tmp_path / "config.yaml")
+    result = startup.install_startup_if_absent(target, cfg, startup_dir=str(tmp_path))
+    assert result is not None
+    assert result.exists()
+
+
+def test_install_if_absent_returns_none_when_exists(tmp_path):
+    target = str(tmp_path / "monitor.py")
+    cfg = str(tmp_path / "config.yaml")
+    # первый вызов — создаёт
+    first = startup.install_startup_if_absent(target, cfg, startup_dir=str(tmp_path))
+    assert first is not None
+    # второй вызов — уже есть, ничего не делает
+    second = startup.install_startup_if_absent(target, cfg, startup_dir=str(tmp_path))
+    assert second is None
+
+    launchers = [p for p in tmp_path.iterdir() if p.suffix == ".vbs"]
+    assert len(launchers) == 1   # без дубликатов

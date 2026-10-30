@@ -23,4 +23,4 @@ notifications:
   sound: true
   toast: true
   log_file: "monitor.log"
-  notify_delay_sec: 3             # 3000мс пауза после уведомления
+  notify_delay_sec: 2             # 3000мс пауза после уведомления

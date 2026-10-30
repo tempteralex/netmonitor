@@ -11,7 +11,7 @@ Seam 2 (внешняя граница): is_vpn_active(vpn_cfg) -> bool
 """
 import pytest
 
-from netmonitor.checkers import is_vpn_active, _interface_is_vpn
+from netmonitor.checkers import is_vpn_active, _interface_is_vpn, _is_system_proxy_enabled
 from netmonitor.config import VpnCfg
 
 
@@ -95,4 +95,71 @@ def test_vpn_active_returns_false_when_psutil_fails(monkeypatch):
         raise RuntimeError("psutil unavailable")
     monkeypatch.setattr("netmonitor.checkers.psutil.net_if_addrs", boom)
 
+    assert is_vpn_active(_vpn_cfg()) is False
+
+
+# === Признак 2: системный прокси Windows (HKCU\...\Internet Settings) ========
+# VPN может не создавать сетевой адаптер, а просто включать системный прокси.
+# ProxyEnable=1 в реестре → VPN активен.
+
+class _FakeKey:
+    def __init__(self, values: dict):
+        self._values = values
+    def QueryValueEx(self, name):
+        return self._values[name]
+
+
+def test_is_system_proxy_enabled_true(monkeypatch):
+    # ProxyEnable=1 → прокси включён
+    monkeypatch.setattr("netmonitor.checkers.winreg.HKEY_CURRENT_USER", 0)
+    monkeypatch.setattr("netmonitor.checkers.winreg.OpenKey", lambda root, path: _FakeKey({"ProxyEnable": (1, 4)}))
+    monkeypatch.setattr("netmonitor.checkers.winreg.QueryValueEx", lambda key, name: key.QueryValueEx(name))
+    monkeypatch.setattr("netmonitor.checkers.winreg.CloseKey", lambda key: None)
+    assert _is_system_proxy_enabled() is True
+
+
+def test_is_system_proxy_disabled_false(monkeypatch):
+    # ProxyEnable=0 → прокси выключен
+    monkeypatch.setattr("netmonitor.checkers.winreg.HKEY_CURRENT_USER", 0)
+    monkeypatch.setattr("netmonitor.checkers.winreg.OpenKey", lambda root, path: _FakeKey({"ProxyEnable": (0, 4)}))
+    monkeypatch.setattr("netmonitor.checkers.winreg.QueryValueEx", lambda key, name: key.QueryValueEx(name))
+    monkeypatch.setattr("netmonitor.checkers.winreg.CloseKey", lambda key: None)
+    assert _is_system_proxy_enabled() is False
+
+
+def test_is_system_proxy_registry_missing_returns_false(monkeypatch):
+    # ключа ProxyEnable нет в реестре → не прокси
+    class _KeyNoValue:
+        def QueryValueEx(self, name):
+            raise FileNotFoundError(name)
+    monkeypatch.setattr("netmonitor.checkers.winreg.HKEY_CURRENT_USER", 0)
+    monkeypatch.setattr("netmonitor.checkers.winreg.OpenKey", lambda root, path: _KeyNoValue())
+    monkeypatch.setattr("netmonitor.checkers.winreg.QueryValueEx", lambda key, name: key.QueryValueEx(name))
+    monkeypatch.setattr("netmonitor.checkers.winreg.CloseKey", lambda key: None)
+    assert _is_system_proxy_enabled() is False
+
+
+def test_is_system_proxy_openkey_fails_returns_false(monkeypatch):
+    # раздел вообще не открывается (нет прав/не существует) → не прокси
+    def boom(root, path):
+        raise OSError("access denied")
+    monkeypatch.setattr("netmonitor.checkers.winreg.HKEY_CURRENT_USER", 0)
+    monkeypatch.setattr("netmonitor.checkers.winreg.OpenKey", boom)
+    monkeypatch.setattr("netmonitor.checkers.winreg.QueryValueEx", lambda key, name: key.QueryValueEx(name))
+    monkeypatch.setattr("netmonitor.checkers.winreg.CloseKey", lambda key: None)
+    assert _is_system_proxy_enabled() is False
+
+
+# === интеграция: is_vpn_active учитывает прокси =============================
+
+def test_vpn_active_when_no_vpn_adapter_but_proxy_enabled(monkeypatch):
+    # VPN-адаптера нет, но системный прокси включён → VPN активен
+    monkeypatch.setattr("netmonitor.checkers.psutil.net_if_addrs", lambda: {"Ethernet": []})
+    monkeypatch.setattr("netmonitor.checkers._is_system_proxy_enabled", lambda: True)
+    assert is_vpn_active(_vpn_cfg()) is True
+
+
+def test_vpn_inactive_when_no_adapter_and_no_proxy(monkeypatch):
+    monkeypatch.setattr("netmonitor.checkers.psutil.net_if_addrs", lambda: {"Ethernet": []})
+    monkeypatch.setattr("netmonitor.checkers._is_system_proxy_enabled", lambda: False)
     assert is_vpn_active(_vpn_cfg()) is False

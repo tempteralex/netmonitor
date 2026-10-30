@@ -12,7 +12,7 @@ hosts:
     - https://www.gosuslugi.ru
     - https://vk.ru
   blocked:
-    - https://www.youtube.com
+    - https://www.google.com/
     - https://twitter.com
 
 vpn:

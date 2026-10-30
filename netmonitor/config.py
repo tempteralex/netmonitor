@@ -55,7 +55,7 @@ _DEFAULTS: dict = {
             "https://online.sberbank.ru",
         ],
         "blocked": [
-            "https://www.youtube.com",
+            "https://www.google.com/",
             "https://twitter.com",
         ],
     },

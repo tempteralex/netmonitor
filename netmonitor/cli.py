@@ -51,6 +51,7 @@ def _parse(argv: list[str]) -> dict:
         "check_once": False,
         "install_startup": False,
         "uninstall_startup": False,
+        "no_tray": False,
         "help": False,
     }
     i = 0
@@ -69,6 +70,8 @@ def _parse(argv: list[str]) -> dict:
             opts["install_startup"] = True
         elif a == "--uninstall-startup":
             opts["uninstall_startup"] = True
+        elif a == "--no-tray":
+            opts["no_tray"] = True
         else:
             raise ValueError(f"неизвестный аргумент: {a}")
         i += 1

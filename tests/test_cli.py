@@ -148,3 +148,29 @@ def test_uninstall_startup_when_absent_returns_zero(tmp_path, monkeypatch, capsy
 def test_unknown_flag_is_error(tmp_path, capsys):
     code = cli.monitor_main(["--frobnicate"])
     assert code != 0
+
+
+# --- --no-tray флаг парсится и не падает ------------------------------------
+
+def test_no_tray_flag_parsed(tmp_path, monkeypatch, capsys):
+    cfg_path = _make_cfg(tmp_path)
+    monkeypatch.setattr("netmonitor.monitor.is_host_available", lambda url, c, r: True)
+    monkeypatch.setattr("netmonitor.monitor.is_vpn_active", lambda vcfg: False)
+    # останавливаем цикл сразу после первой итерации
+    monkeypatch.setattr("netmonitor.monitor.time.sleep", lambda s: (_ for _ in ()).throw(KeyboardInterrupt()))
+    # TrayIcon не должен создаваться — проверяем через отсутствие импорта tray
+    import netmonitor.cli as cli_mod
+    real_trayicon = None
+    try:
+        from netmonitor import tray as _tray_mod
+        real_trayicon = _tray_mod.TrayIcon
+    except Exception:
+        real_trayicon = None
+    # подменяем TrayIcon чтобы отследить создание
+    created = {"n": 0}
+    if real_trayicon is not None:
+        monkeypatch.setattr("netmonitor.tray.TrayIcon", lambda *a, **k: created.__setitem__("n", created["n"] + 1) or real_trayicon(*a, **k))
+
+    code = cli.monitor_main(["--no-tray", "--config", str(cfg_path)])
+    assert code == 0
+    assert created["n"] == 0   # TrayIcon не создавался

@@ -112,6 +112,33 @@ def test_iteration_no_internet_when_all_hosts_fail(tmp_path, monkeypatch):
     assert tracker.current is State.NO_INTERNET
 
 
+def test_iteration_order_tray_then_notify(tmp_path, monkeypatch):
+    """Порядок при смене состояния: tray.update → notifier.notify (toast→звук)."""
+    cfg = _make_cfg(tmp_path)
+    monkeypatch.setattr(monitor, "is_host_available", lambda url, c, r: True)
+    monkeypatch.setattr(monitor, "is_vpn_active", lambda vcfg: False)
+
+    tracker = StateTracker(confirm_count=1)
+    n = Notifier(cfg.notifications)
+    n._play_sound = lambda: None
+    n._show_toast = lambda t: None
+
+    order = []
+    class _TrayStub:
+        def update(self, state):
+            order.append("tray")
+        def start_detached(self):
+            pass
+        def stop(self):
+            pass
+    tray = _TrayStub()
+    # подменяем notify, чтобы зафиксировать момент вызова
+    n.notify = lambda old, new: order.append("notify")
+
+    _run_iteration(cfg, tracker, n, tray=tray)
+    assert order == ["tray", "notify"]   # сначала трей, потом уведомление
+
+
 def test_iteration_passes_real_old_state_on_change(tmp_path, monkeypatch):
     """При смене подтверждённого состояния notify получает настоящее old_state,
     а не None. SPEC: лог пишет old -> new."""

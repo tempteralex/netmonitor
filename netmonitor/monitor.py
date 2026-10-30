@@ -67,9 +67,11 @@ def _run_iteration(cfg: Config, tracker, notifier, tray=None) -> State | None:
     old = tracker.current                      # ДО observe — настоящее старое состояние
     confirmed = tracker.observe(observed)
     if confirmed is not None and confirmed != old:
-        notifier.notify(old, confirmed)        # old — реальное предыдущее подтверждённое
+        # Порядок при смене состояния: сначала смена значка в трее,
+        # затем уведомление (toast → задержка → звук).
         if tray is not None:
             tray.update(confirmed)             # обновить иконку в трее
+        notifier.notify(old, confirmed)        # toast → задержка → звук
     return confirmed
 
 

@@ -17,6 +17,7 @@ env/
 .coverage
 htmlcov/
 .tox/
+tests/
 
 # Логи и runtime-данные
 *.log

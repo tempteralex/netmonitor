@@ -21,6 +21,15 @@ htmlcov/
 # Логи и runtime-данные
 *.log
 
+# Временные диагностические/отладочные файлы
+vpn_procs.txt
+ifaces.txt
+*.tmp
+tmp*
+
+# Лаунчеры автозагрузки (если случайно создались в папке проекта)
+*.vbs
+
 # Локальный конфиг пользователя (если переопределяет config.yaml)
 config.local.yaml
 
@@ -33,3 +42,7 @@ config.local.yaml
 *.swp
 *.swo
 .DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini

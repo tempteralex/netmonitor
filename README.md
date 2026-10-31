@@ -28,17 +28,37 @@
    - проигрывает звук `C:\Windows\Media\Alarm10.wav`,
    - обновляет иконку в трее.
 
-## Установка
+## Установка с GitHub
 
-### 1. Зависимости
+### 1. Клонирование репозитория
 
 ```bash
+git clone https://github.com/tempteralex/netmonitor.git
+cd netmonitor
+```
+
+Или через SSH:
+```bash
+git clone git@github.com:tempteralex/netmonitor.git
+cd netmonitor
+```
+
+### 2. Установка зависимостей
+
+Рекомендуется использовать виртуальное окружение:
+
+```bash
+python -m venv venv
+venv/Scripts/activate          # Windows (git-bash / PowerShell)
+# или:  venv\Scripts\activate.bat   (cmd)
+# или:  venv\Scripts\Activate.ps1   (PowerShell)
+
 pip install -r requirements.txt
 ```
 
 Требуется Python 3.10+ на Windows (используется `winsound`, `winreg`, `pystray`).
 
-### 2. Конфигурация
+### 3. Конфигурация
 
 Файл [`config.yaml`](config.yaml) уже идёт с примером. Отредактируйте под себя:
 - `hosts.allowed` — хосты, доступные всегда (белый список при ограничениях)
@@ -47,7 +67,7 @@ pip install -r requirements.txt
 - `vpn.interface_patterns` — паттерны имён VPN-адаптеров (TAP/TUN/Wintun/...)
 - `interval_sec`, `confirm_count` — интервал опроса и число подтверждений
 
-### 3. Первый запуск
+### 4. Первый запуск
 
 ```bash
 python -m netmonitor.cli --config config.yaml
@@ -60,6 +80,16 @@ Windows (если её там ещё нет). После перезагрузк�
 Чтобы отключить авто-добавление в автозагрузку:
 ```bash
 python -m netmonitor.cli --config config.yaml --no-autostart
+```
+
+## Установка (кратко)
+
+```bash
+git clone https://github.com/tempteralex/netmonitor.git
+cd netmonitor
+python -m venv venv && venv/Scripts/activate
+pip install -r requirements.txt
+python -m netmonitor.cli --config config.yaml
 ```
 
 ## Использование

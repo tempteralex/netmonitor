@@ -44,11 +44,10 @@ _DEFAULTS: dict = {
     "hosts": {
         "allowed": [
             "https://www.gosuslugi.ru",
-            "https://online.sberbank.ru",
+            "https://vk.ru",
         ],
         "blocked": [
-            "https://www.google.com/",
-            "https://twitter.com",
+            "https://connectivitycheck.gstatic.com/generate_204",
         ],
     },
     "notifications": {

@@ -32,17 +32,18 @@ _LABELS = {
 def compute_state(allowed_ok: bool, blocked_ok: bool) -> State:
     """Чистая функция по таблице состояний.
 
-    allowed_ok  — хотя бы один разрешённый хост доступен
-    blocked_ok  — хотя бы один запрещённый хост доступен
+    blocked_ok — connectivitycheck.gstatic.com доступен (маркер полного интернета:
+                 доступен прямо или проброшен через VPN). Блокируется при белых списках.
+    allowed_ok — хотя бы один хост белого списка доступен (gosuslugi/vk).
     """
-    if not allowed_ok:
-        # нет ожидаемого белого хоста → нет сети (включая вырожденный blocked-only)
-        return State.NO_INTERNET
-    if not blocked_ok:
-        # allowed есть, blocked нет → белый список
+    if blocked_ok:
+        # connectivitycheck доступен → полный интернет (прямо или через VPN)
+        return State.UNRESTRICTED
+    if allowed_ok:
+        # connectivitycheck заблокирован, но белые хосты доступны → ограниченный интернет
         return State.WHITELIST
-    # allowed и blocked оба доступны → полный интернет
-    return State.UNRESTRICTED
+    # ничего не доступно → интернета нет
+    return State.NO_INTERNET
 
 
 # === П7: одна итерация и главный цикл ======================================

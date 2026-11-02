@@ -11,8 +11,7 @@ hosts:
     - https://www.gosuslugi.ru
     - https://vk.ru
   blocked:
-    - https://www.google.com/
-    - https://twitter.com
+    - https://connectivitycheck.gstatic.com/generate_204
 
 notifications:
   sound: true

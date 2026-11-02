@@ -12,13 +12,6 @@ venv/
 .venv/
 env/
 
-# Тестирование
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-tests/
-
 # Логи и runtime-данные
 *.log
 

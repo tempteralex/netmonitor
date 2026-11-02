@@ -52,8 +52,35 @@ def compute_state(allowed_ok: bool, blocked_ok: bool, vpn_active: bool) -> State
 # === П7: одна итерация и главный цикл ======================================
 
 def _check_any(urls, connect_timeout, read_timeout) -> bool:
-    """Хотя бы один URL доступен."""
-    return any(is_host_available(u, connect_timeout, read_timeout) for u in urls)
+    """Хотя бы один URL доступен. Проверка параллельная (ThreadPoolExecutor),
+    с общим таймаутом — зависший хост не блокирует результат от быстрого.
+
+    Это важно при VPN/прокси, где часть хостов может висеть на таймауте:
+    последовательная проверка делала бы суммарный таймаут, параллельная — максимум
+    по одному.
+    """
+    urls = list(urls)
+    if not urls:
+        return False
+    overall = connect_timeout + read_timeout + 1
+    from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+    ex = ThreadPoolExecutor(max_workers=min(len(urls), 8))
+    pending = set()
+    try:
+        pending = {ex.submit(is_host_available, u, connect_timeout, read_timeout) for u in urls}
+        while pending:
+            done, pending = wait(pending, timeout=overall, return_when=FIRST_COMPLETED)
+            if not done:
+                # ничего не завершилось за overall — все зависли, выходим
+                break
+            for fut in done:
+                if fut.result():
+                    return True
+        return False
+    finally:
+        for f in pending:
+            f.cancel()
+        ex.shutdown(wait=False, cancel_futures=True)
 
 
 def _run_iteration(cfg: Config, tracker, notifier, tray=None) -> State | None:

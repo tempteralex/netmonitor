@@ -1,11 +1,10 @@
 # Конфигурация netmonitor
-# VPN определяется только по наличию VPN-адаптера (TAP/TUN/Wintun) —
-# провайдерский IP динамический, поэтому IP-сравнение не используется.
+# Определяет 3 состояния: интернет без ограничений / белые списки / нет интернета.
 
 interval_sec: 6
-connect_timeout_sec: 5
-read_timeout_sec: 5
-confirm_count: 2
+connect_timeout_sec: 3
+read_timeout_sec: 3
+confirm_count: 3
 
 hosts:
   allowed:
@@ -14,10 +13,6 @@ hosts:
   blocked:
     - https://www.google.com/
     - https://twitter.com
-
-vpn:
-  interface_patterns: ["TAP", "TUN", "Wintun", "wg", "OpenVPN", "vpn"]
-  exclude_interface_patterns: ["Hyper-V", "VirtualBox", "Loopback"]
 
 notifications:
   sound: true

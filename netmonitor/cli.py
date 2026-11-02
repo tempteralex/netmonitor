@@ -199,8 +199,7 @@ def _check_once(cfg) -> "State":
     blocked_ok = monitor_mod._check_any(
         cfg.hosts.blocked, cfg.connect_timeout_sec, cfg.read_timeout_sec
     )
-    vpn_active = monitor_mod.is_vpn_active(cfg.vpn)
-    return monitor_mod.compute_state(allowed_ok, blocked_ok, vpn_active)
+    return monitor_mod.compute_state(allowed_ok, blocked_ok)
 
 
 if __name__ == "__main__":

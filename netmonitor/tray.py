@@ -17,7 +17,6 @@ from netmonitor.monitor import State
 # цвета для каждого состояния (RGB)
 STATE_COLORS: dict[State, tuple[int, int, int]] = {
     State.UNRESTRICTED: (34, 197, 94),    # зелёный — интернет без ограничений
-    State.WITH_VPN: (59, 130, 246),       # синий — интернет через VPN
     State.WHITELIST: (234, 179, 8),       # жёлтый — ограниченный (белые списки)
     State.NO_INTERNET: (239, 68, 68),     # красный — интернета нет
 }
@@ -59,7 +58,6 @@ def make_icon(state: State) -> Image.Image:
 def _state_letter(state: State) -> str:
     return {
         State.UNRESTRICTED: "I",    # Internet
-        State.WITH_VPN: "V",        # VPN
         State.WHITELIST: "W",       # Whitelist
         State.NO_INTERNET: "X",     # no internet
     }[state]

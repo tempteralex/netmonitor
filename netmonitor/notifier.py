@@ -4,7 +4,7 @@ Seam: Notifier(notifications_cfg).notify(old_state, new_state)
 Действия (по флагам cfg):
   - звук:        winsound (stdlib, Windows). Вид звука зависит от характера смены:
                    NO_INTERNET      → "alarm"
-                   улучшение (→ UNRESTRICTED/WITH_VPN, или из NO_INTERNET) → "ok"
+                   улучшение (→ UNRESTRICTED, или из NO_INTERNET) → "ok"
                    иное ухудшение   → "warn"
   - toast:       через PowerShell BurnDownNotification (без сторонних пакетов)
   - лог-файл:    append-запись строки перехода

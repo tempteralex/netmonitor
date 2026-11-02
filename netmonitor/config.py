@@ -17,13 +17,6 @@ class HostsCfg:
 
 
 @dataclass
-class VpnCfg:
-    interface_patterns: list[str]
-    exclude_interface_patterns: list[str]
-    # IP-сравнение убрано: провайдерский IP динамический, определение только по интерфейсам
-
-
-@dataclass
 class NotificationsCfg:
     sound: bool
     toast: bool
@@ -38,7 +31,6 @@ class Config:
     read_timeout_sec: int
     confirm_count: int
     hosts: HostsCfg
-    vpn: VpnCfg
     notifications: NotificationsCfg
 
 
@@ -58,10 +50,6 @@ _DEFAULTS: dict = {
             "https://www.google.com/",
             "https://twitter.com",
         ],
-    },
-    "vpn": {
-        "interface_patterns": ["TAP", "TUN", "Wintun", "wg", "OpenVPN", "vpn"],
-        "exclude_interface_patterns": ["Hyper-V", "VirtualBox", "Loopback"],
     },
     "notifications": {
         "sound": True,
@@ -121,10 +109,6 @@ def load(path: str | Path) -> Config:
         hosts=HostsCfg(
             allowed=list(merged["hosts"]["allowed"]),
             blocked=list(merged["hosts"]["blocked"]),
-        ),
-        vpn=VpnCfg(
-            interface_patterns=list(merged["vpn"]["interface_patterns"]),
-            exclude_interface_patterns=list(merged["vpn"]["exclude_interface_patterns"]),
         ),
         notifications=NotificationsCfg(
             sound=merged["notifications"]["sound"],

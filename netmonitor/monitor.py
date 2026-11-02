@@ -10,7 +10,7 @@ import logging
 import time
 from enum import Enum
 
-from netmonitor.checkers import is_host_available, is_vpn_active
+from netmonitor.checkers import is_host_available, is_vpn_active, is_internet_via_vpn
 from netmonitor.config import Config, load
 
 
@@ -86,9 +86,17 @@ def _check_any(urls, connect_timeout, read_timeout) -> bool:
 def _run_iteration(cfg: Config, tracker, notifier, tray=None) -> State | None:
     """Одна итерация мониторинга. Возвращает подтверждённое состояние, если оно
     сменилось в этой итерации; иначе None. Может бросать исключения — их ловит main."""
-    allowed_ok = _check_any(cfg.hosts.allowed, cfg.connect_timeout_sec, cfg.read_timeout_sec)
-    blocked_ok = _check_any(cfg.hosts.blocked, cfg.connect_timeout_sec, cfg.read_timeout_sec)
-    vpn_active = is_vpn_active(cfg.vpn)
+    # При VPN: HTTP-проверки хостов могут нестабильно таймаутить (прокси-клиент
+    # жив, но отвечает через раз). Поэтому если прокси-порт открыт (VPN работает),
+    # считаем интернет доступным через VPN — все хосты OK, состояние WITH_VPN.
+    if is_internet_via_vpn():
+        allowed_ok = True
+        blocked_ok = True
+        vpn_active = True
+    else:
+        allowed_ok = _check_any(cfg.hosts.allowed, cfg.connect_timeout_sec, cfg.read_timeout_sec)
+        blocked_ok = _check_any(cfg.hosts.blocked, cfg.connect_timeout_sec, cfg.read_timeout_sec)
+        vpn_active = is_vpn_active(cfg.vpn)
 
     observed = compute_state(allowed_ok, blocked_ok, vpn_active)
     old = tracker.current                      # ДО observe — настоящее старое состояние

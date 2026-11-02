@@ -6,6 +6,7 @@ False на сетевой ошибке / таймауте / 5xx.
 """
 from __future__ import annotations
 
+import socket
 import psutil
 import requests
 import winreg
@@ -65,6 +66,62 @@ def _is_system_proxy_enabled() -> bool:
             winreg.CloseKey(key)
         except OSError:
             pass
+
+
+def _get_system_proxy_server() -> str | None:
+    """Адрес системного прокси (host:port) из HKCU ProxyServer, или None.
+
+    Возвращает строку вида "127.0.0.1:3067" если прокси прописан, иначе None.
+    """
+    try:
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+        )
+    except OSError:
+        return None
+    try:
+        value, _ = winreg.QueryValueEx(key, "ProxyServer")
+        return value if value else None
+    except (FileNotFoundError, OSError):
+        return None
+    finally:
+        try:
+            winreg.CloseKey(key)
+        except OSError:
+            pass
+
+
+def _is_proxy_port_open(proxy_addr: str | None, timeout: float = 2.0) -> bool:
+    """TCP-проверка: отвечает ли порт прокси (host:port).
+
+    Быстрый и надёжный признак того, что VPN-клиент жив и принимает соединения —
+    в отличие от HTTP-проверки через прокси, которая может таймаутить из-за
+    нестабильности прокси-клиента на уровне HTTP.
+    """
+    if not proxy_addr or ":" not in proxy_addr:
+        return False
+    try:
+        host, port = proxy_addr.rsplit(":", 1)
+        sock = socket.create_connection((host, int(port)), timeout=timeout)
+        sock.close()
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def is_internet_via_vpn() -> bool:
+    """True если VPN-прокси включён в системе И его TCP-порт отвечает.
+
+    Это надёжный признак «интернет доступен через VPN»: прокси прописан
+    (ProxyEnable=1) и VPN-клиент жив (порт принимает соединения).
+    Используется в compute_state, чтобы определить WITH_VPN даже когда
+    HTTP-проверки отдельных хостов нестабильны.
+    """
+    if not _is_system_proxy_enabled():
+        return False
+    proxy_addr = _get_system_proxy_server()
+    return _is_proxy_port_open(proxy_addr)
 
 
 def is_vpn_active(vpn_cfg) -> bool:
